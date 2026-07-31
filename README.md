@@ -17,7 +17,7 @@ deve dar **Ctrl+F5** para pegar a versão nova.
 ## Sincronizar entre a equipe (Firebase)
 
 Hoje cada pessoa guarda os dados no próprio aparelho. Para compartilhar clientes,
-kits e histórico entre as 3 pessoas, siga o `FIREBASE-PASSO-A-PASSO.txt`:
+kits e histórico entre as 3 pessoas, siga o `PASSO-A-PASSO-FIREBASE.txt`:
 é um projeto Firebase **exclusivo deste sistema**, sem nenhuma ligação com o
 banco do gerador de limpeza.
 
