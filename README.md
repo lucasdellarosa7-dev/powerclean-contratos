@@ -5,25 +5,21 @@ Funciona no computador e no celular, e pode ser publicado de graça no GitHub Pa
 
 ---
 
-## Como publicar no GitHub
+## Onde está publicado
 
-1. Entre no repositório onde já está o gerador de propostas de limpeza.
-2. Clique em **Add file → Upload files** e arraste o arquivo `index.html`
-   (o que está nesta pasta). Se preferir manter os dois sistemas separados,
-   renomeie para `contratos.html` antes de subir.
-3. Em **Settings → Pages**, confirme que o Source está como **Deploy from a branch**,
-   branch `main` e pasta `/ (root)`.
-4. Em um ou dois minutos o site fica no ar em
-   `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/index.html`.
-5. Mande o link para as outras duas pessoas — cada uma abre no navegador
-   (dá para "Adicionar à tela de início" no celular e usar como aplicativo).
+Site no ar em **https://lucasdellarosa7-dev.github.io/powerclean-contratos/**
+(repositório `powerclean-contratos`, separado do gerador de limpeza).
 
-## Como atualizar depois
+Para atualizar: suba o `index.html` novo por cima do antigo no repositório
+(Add file -> Upload files -> mesmo nome -> Commit). Quem já tiver o site aberto
+deve dar **Ctrl+F5** para pegar a versão nova.
 
-Suba o `index.html` novo por cima do antigo (Upload files → mesmo nome → Commit).
-Quem já tiver o site aberto deve dar um **Ctrl+F5** para pegar a versão nova.
+## Sincronizar entre a equipe (Firebase)
 
----
+Hoje cada pessoa guarda os dados no próprio aparelho. Para compartilhar clientes,
+kits e histórico entre as 3 pessoas, siga o `FIREBASE-PASSO-A-PASSO.txt`:
+é um projeto Firebase **exclusivo deste sistema**, sem nenhuma ligação com o
+banco do gerador de limpeza.
 
 ## Como usar
 
