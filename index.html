@@ -218,6 +218,13 @@ table.pr-eq tr:nth-child(even) td{background:#F7F8FB}
 .pr-val .d{flex:1;text-align:center;padding:3mm}
 .pr-val .d .n{font-size:17pt;font-weight:700;color:#D9A420}
 .pr-val .d .x{font-size:8.5pt;font-style:italic}
+table.pr-cartao{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:1mm}
+table.pr-cartao th{background:#16224C;color:#fff;padding:1.4mm 2mm;font-size:8pt;font-weight:700}
+table.pr-cartao td{border:1px solid #ccc;padding:1.1mm 2mm}
+table.pr-cartao td.p{text-align:center;font-weight:700;color:#16224C;width:9%}
+table.pr-cartao td.v{text-align:right;width:24.3%}
+table.pr-cartao tr:nth-child(even) td{background:#F7F8FB}
+.pr-cartao-obs{font-size:7.5pt;color:#595959;font-style:italic;margin-top:1.2mm}
 .pr-obs{font-size:8pt;color:#595959;font-style:italic;margin-top:4mm;line-height:1.4}
 .pr-cons{font-size:9.5pt;font-weight:700;color:#16224C;margin-top:3mm}
 .pr-band{background:#16224C;color:#fff;text-align:center;padding:3mm;font-size:13pt;font-weight:700}
@@ -359,6 +366,12 @@ table.pr-eq tr:nth-child(even) td{background:#F7F8FB}
         <textarea id="f-pag-proposta" rows="3"></textarea>
       </div>
     </div>
+    <div class="check">
+      <input type="checkbox" id="f-cartao" checked>
+      <label for="f-cartao" style="margin:0">Incluir simulação do cartão de crédito na proposta (até 18x)</label>
+    </div>
+    <p class="dica">Calculada sobre o valor total, com as taxas da maquininha. O cliente vê apenas o número
+      de parcelas e o valor de cada uma — a taxa e o valor final não aparecem.</p>
   </div>
 
   <div class="card">
@@ -869,6 +882,25 @@ const EMPRESA = {
 const RODAPE = `${EMPRESA.fantasia}<br>${EMPRESA.razao} – CNPJ ${EMPRESA.cnpj}<br>` +
   `${EMPRESA.endereco}<br>Fone: ${EMPRESA.fone} – E-mail: ${EMPRESA.email}`;
 
+/* =========================================================================
+   SIMULAÇÃO DE CARTÃO DE CRÉDITO
+   Taxas da maquininha (PagBank) — planilha "simulação cartão", 22/06/2026.
+   Valem para qualquer valor de venda.
+        total = valor * (1 + taxa)        parcela = total / nº de parcelas
+   IMPORTANTE: na proposta só podem aparecer o NÚMERO DE PARCELAS e o
+   VALOR DA PARCELA. A taxa e o valor total NÃO são exibidos ao cliente.
+   ========================================================================= */
+const TAXAS_CARTAO = [
+  [1, 0.0326], [2, 0.0530], [3, 0.0616], [4, 0.0703], [5, 0.0788], [6, 0.0875],
+  [7, 0.0962], [8, 0.1049], [9, 0.1138], [10, 0.1225], [11, 0.1315], [12, 0.1404],
+  [13, 0.1495], [14, 0.1586], [15, 0.1676], [16, 0.1769], [17, 0.1861], [18, 0.1952]
+];
+const BANDEIRAS_CARTAO = 'Visa e Mastercard. Demais bandeiras, consultar.';
+
+function simularCartao(valor) {
+  return TAXAS_CARTAO.map(([n, taxa]) => ({ n: n, parcela: (valor * (1 + taxa)) / n }));
+}
+
 /* campo preenchido, ou marcador amarelo */
 function ou(v, marcador) {
   const s = (v == null ? '' : String(v)).trim();
@@ -1055,16 +1087,47 @@ function blocosProposta(d) {
   pag1.push('<div class="pr-tit">FORMAS DE PAGAMENTO</div>');
   (d.pagamentosTexto || []).forEach(i => pag1.push(`<div class="pr-li bola">${esc(i)}</div>`));
 
+  if (d.simularCartao && d.valorTotal) {
+    pag1.push('<div class="pr-li bola">Cartão de crédito em até 18x — simulação na página seguinte.</div>');
+  }
+
   pag1.push(`<div class="pr-obs">Proposta válida por ${esc(d.validade || 15)} dias a contar da data de emissão, ` +
     `sujeita a visita técnica e análise das condições do local de instalação. Valores condicionados à ` +
     `disponibilidade de estoque dos equipamentos.</div>`);
   pag1.push(`<div class="pr-cons">Consultor(a) responsável: ${ou(d.consultor, 'CONSULTOR')} – ${EMPRESA.fone}</div>`);
 
-  if (!d.incluirPagina2) return [pag1];
-
   /* ---------- página 2 ---------- */
   const pag2 = [];
-  pag2.push('<div class="pr-band">POR QUE ESCOLHER ENERGIA SOLAR COM A POWER CLEAN?</div>');
+
+  /* simulação de cartão: SÓ o nº de parcelas e o valor da parcela.
+     A taxa e o valor total nunca são impressos. */
+  if (d.simularCartao && d.valorTotal) {
+    const sim = simularCartao(d.valorTotal);
+    const COLUNAS = 3;                                  // 3 pares lado a lado
+    const porColuna = Math.ceil(sim.length / COLUNAS);
+    let linhas = '';
+    for (let i = 0; i < porColuna; i++) {
+      linhas += '<tr>';
+      for (let c = 0; c < COLUNAS; c++) {
+        const item = sim[i + c * porColuna];
+        linhas += item
+          ? `<td class="p">${item.n}x</td><td class="v">${fmtMoeda(item.parcela)}</td>`
+          : '<td></td><td></td>';
+      }
+      linhas += '</tr>';
+    }
+    pag2.push('<div class="pr-tit" style="margin-top:0">SIMULAÇÃO NO CARTÃO DE CRÉDITO</div>');
+    pag2.push(`<table class="pr-cartao">
+      <tr>${'<th>Parcelas</th><th>Valor da parcela</th>'.repeat(COLUNAS)}</tr>
+      ${linhas}</table>`);
+    pag2.push(`<div class="pr-cartao-obs">${esc(BANDEIRAS_CARTAO)} Parcelamento sujeito ao limite disponível
+      no cartão e à aprovação da operadora.</div>`);
+  }
+
+  if (!d.incluirPagina2) return pag2.length ? [pag1, pag2] : [pag1];
+
+  pag2.push(`<div class="pr-band" style="margin-top:${d.simularCartao && d.valorTotal ? '4mm' : '0'}">` +
+            'POR QUE ESCOLHER ENERGIA SOLAR COM A POWER CLEAN?</div>');
   pag2.push('<div class="pr-tit">VANTAGENS DA ENERGIA SOLAR</div>');
   ['Economia de até 95% na sua conta de energia elétrica;',
    'Proteção contra os aumentos de tarifa e bandeiras tarifárias;',
@@ -1601,7 +1664,8 @@ function coletarDados() {
     })).filter(p => p.forma),
     pagamentosTexto: document.getElementById('f-pag-proposta').value
       .split('\n').map(s => s.trim()).filter(Boolean),
-    incluirPagina2: document.getElementById('f-pagina2').checked
+    incluirPagina2: document.getElementById('f-pagina2').checked,
+    simularCartao: document.getElementById('f-cartao').checked
   };
 }
 
@@ -1751,6 +1815,7 @@ function carregarNoFormulario(d) {
   document.getElementById('f-forn-end').value = (d.fornecedor || {}).endereco || '';
   document.getElementById('f-pag-proposta').value = (d.pagamentosTexto || []).join('\n');
   document.getElementById('f-pagina2').checked = d.incluirPagina2 !== false;
+  document.getElementById('f-cartao').checked = d.simularCartao !== false;
   document.getElementById('mesma-instalacao').checked = true;
   document.querySelector('#tab-eq tbody').innerHTML = '';
   (d.equipamentos || []).forEach(addEquip);
