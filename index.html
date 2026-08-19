@@ -879,8 +879,13 @@ const EMPRESA = {
   email: 'comercialpowerclean2@gmail.com'
 };
 
+/* contrato: documento legal, leva razão social e CNPJ */
 const RODAPE = `${EMPRESA.fantasia}<br>${EMPRESA.razao} – CNPJ ${EMPRESA.cnpj}<br>` +
   `${EMPRESA.endereco}<br>Fone: ${EMPRESA.fone} – E-mail: ${EMPRESA.email}`;
+
+/* proposta: peça comercial, só o nome fantasia */
+const RODAPE_PROPOSTA = `${EMPRESA.fantasia}<br>${EMPRESA.endereco}<br>` +
+  `Fone: ${EMPRESA.fone} – E-mail: ${EMPRESA.email}`;
 
 /* =========================================================================
    SIMULAÇÃO DE CARTÃO DE CRÉDITO
@@ -1157,7 +1162,7 @@ function blocosProposta(d) {
     projeto — do dimensionamento à homologação junto à concessionária — com eficiência, transparência e compromisso
     com o resultado. Energia que move seu futuro.</div>`);
   pag2.push(`<div class="dc-p" style="color:#595959;font-size:8.5pt;margin-top:3mm">
-    ${EMPRESA.razao} – CNPJ ${EMPRESA.cnpj}<br>${EMPRESA.endereco}<br>
+    ${EMPRESA.endereco}<br>
     Fone/WhatsApp: ${EMPRESA.fone} – E-mail: ${EMPRESA.email}</div>`);
 
   return [pag1, pag2];
@@ -1202,11 +1207,13 @@ function paginar(grupos, cabHTML, opcoes) {
   const alturaUtil = (297 - 9 - 8 - 7) * pxmm; // A4 menos paddings menos folga de segurança
   const folhas = [];
 
+  const rodape = opcoes.rodape || RODAPE;
+
   function novaFolha() {
     const f = document.createElement('div');
     f.className = 'folha';
     f.innerHTML = `<div class="dc-pag"></div>${cabHTML || ''}<div class="conteudo"></div>` +
-                  `<div class="dc-rod">${RODAPE}</div>`;
+                  `<div class="dc-rod">${rodape}</div>`;
     alvo.appendChild(f);
     folhas.push(f);
     return f;
@@ -1240,8 +1247,21 @@ function paginar(grupos, cabHTML, opcoes) {
   return folhas.length;
 }
 
+/* O navegador usa o título da página como nome sugerido do PDF ao imprimir,
+   então trocamos pelo nome do documento + cliente enquanto a visualização
+   estiver aberta. */
+const TITULO_PAGINA = document.title;
+
+function nomeArquivo(texto) {
+  return String(texto || '')
+    .replace(/[\\/:*?"<>|]/g, '-')   // caracteres proibidos em nome de arquivo
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function visualizar(titulo, grupos, cabHTML, opcoes) {
   document.getElementById('visual-titulo').textContent = titulo;
+  document.title = nomeArquivo(titulo) || TITULO_PAGINA;
   // o painel precisa estar visível ANTES de paginar: as alturas são medidas de verdade
   document.getElementById('visual').classList.add('aberto');
   document.getElementById('folhas').style.zoom = '';   // mede sempre em tamanho real
@@ -1260,6 +1280,7 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', rees
 
 function fecharVisual() {
   document.getElementById('visual').classList.remove('aberto');
+  document.title = TITULO_PAGINA;
 }
 </script>
 <script>/* =========================================================================
@@ -1700,7 +1721,8 @@ function gerarProposta() {
     ? docReabrindo.numero : BD.proximoNumero('proposta');
   d.tipo = 'proposta';
   registrar(d);
-  visualizar(`Proposta ${d.numero} · ${d.cliente.nome}`, blocosProposta(d), '', { numerar: false });
+  visualizar(`Proposta ${d.numero} - ${d.cliente.nome}`, blocosProposta(d), '',
+             { numerar: false, rodape: RODAPE_PROPOSTA });
 }
 
 function gerarContrato() {
@@ -1710,7 +1732,7 @@ function gerarContrato() {
     ? docReabrindo.numero : BD.proximoNumero('contrato');
   d.tipo = 'contrato';
   registrar(d);
-  visualizar(`Contrato ${d.numero} · ${d.cliente.nome}`, [blocosContrato(d)], cabecalhoContrato(d));
+  visualizar(`Contrato ${d.numero} - ${d.cliente.nome}`, [blocosContrato(d)], cabecalhoContrato(d));
 }
 
 function registrar(d) {
@@ -1760,9 +1782,10 @@ function reabrirDoc(id) {
   d.numero = doc.numero;
   docReabrindo = doc;
   if (doc.tipo === 'contrato') {
-    visualizar(`Contrato ${doc.numero} · ${d.cliente.nome}`, [blocosContrato(d)], cabecalhoContrato(d));
+    visualizar(`Contrato ${doc.numero} - ${d.cliente.nome}`, [blocosContrato(d)], cabecalhoContrato(d));
   } else {
-    visualizar(`Proposta ${doc.numero} · ${d.cliente.nome}`, blocosProposta(d), '', { numerar: false });
+    visualizar(`Proposta ${doc.numero} - ${d.cliente.nome}`, blocosProposta(d), '',
+                { numerar: false, rodape: RODAPE_PROPOSTA });
   }
 }
 
