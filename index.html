@@ -479,10 +479,18 @@ table.pr-cartao tr:nth-child(even) td{background:#F7F8FB}
       e substitui o catálogo inteiro. Os preços ficam apenas no banco protegido —
       nunca no endereço público do site.
     </p>
-    <label class="btn btn-p" style="cursor:pointer;margin-top:8px">
-      ⬆ Importar catálogo (.json)
-      <input type="file" accept=".json" style="display:none" onchange="importarCatalogo(this)">
-    </label>
+    <div class="acoes" style="justify-content:flex-start;margin-top:10px">
+      <label class="btn btn-p" style="cursor:pointer">
+        ⬆ Importar tabela oficial (.json)
+        <input type="file" accept=".json" style="display:none" onchange="importarCatalogo(this)">
+      </label>
+      <button type="button" class="btn btn-d" onclick="limparCatalogo()">🗑 Apagar catálogo atual</button>
+    </div>
+    <p class="dica" style="margin-top:10px">
+      A importação já substitui tudo — só use o "apagar" se quiser deixar o catálogo
+      vazio antes de subir a tabela. Os documentos já gerados não são afetados:
+      cada um guarda a própria cópia dos dados.
+    </p>
   </div>
 </section>
 
@@ -1470,6 +1478,24 @@ function usarKit(id) {
 }
 
 /* ---------- importação do catálogo (somente responsável) ---------- */
+/* apaga o catálogo inteiro (usado para tirar os kits cadastrados na mão
+   antes de subir a tabela oficial) */
+function limparCatalogo() {
+  const total = BD.dados.kits.length;
+  if (!total) { toast('O catálogo já está vazio.'); return; }
+  if (!confirm(`Apagar os ${total} kit(s) do catálogo?
+
+` +
+               `Vale para todo mundo da equipe. Os documentos já gerados não mudam — ` +
+               `cada um guarda a própria cópia dos dados.`)) return;
+  BD.dados.kits = [];
+  BD.salvar('kits');
+  preencherSelectKits();
+  renderKits();
+  atualizarIndicadores();
+  toast(`🗑 Catálogo apagado (${total} kits). Agora importe a tabela oficial.`, 4200);
+}
+
 function importarCatalogo(input) {
   const arq = input.files[0];
   if (!arq) return;
@@ -1484,10 +1510,18 @@ function importarCatalogo(input) {
           throw new Error(`Kit ${i + 1} sem id, potência ou preço válido.`);
         }
       });
-      if (!confirm(`Substituir o catálogo por ${kits.length} kits?
+      const antes = BD.dados.kits.length;
+      if (!confirm(
+            `Importar ${kits.length} kits da tabela oficial?
 
 ` +
-                   `O catálogo atual tem ${BD.dados.kits.length}.`)) { input.value = ''; return; }
+            (antes
+              ? `Os ${antes} kit(s) que estão no catálogo hoje serão APAGADOS e ` +
+                `substituídos — inclusive os que foram cadastrados na mão.
+
+`
+              : '') +
+            `Isso vale para todo mundo da equipe.`)) { input.value = ''; return; }
       BD.dados.kits = kits;
       BD.salvar('kits');
       preencherSelectKits();
