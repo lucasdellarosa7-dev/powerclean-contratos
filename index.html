@@ -114,6 +114,27 @@ table.lista .acoes-linha button.perigo{color:var(--erro);border-color:#f0c8c3}
   font-size:12.5px;color:var(--txt2);margin-top:8px}
 .resumo-kit b{color:var(--navy)}
 
+/* ===================== DESCONTO / DIVISÃO ===================== */
+#f-desconto.acima-limite{border-color:var(--erro);background:#fff6f5;color:var(--erro);font-weight:800}
+.alerta-desconto{background:#fff8e6;border:1px solid #f0c36d;border-left:5px solid var(--aviso);
+  border-radius:9px;padding:14px 16px;margin:10px 0 4px}
+.alerta-desconto .titulo{font-weight:800;color:#8a6100;font-size:13.5px;margin-bottom:6px}
+.alerta-desconto p{margin:0 0 10px;font-size:13px;color:#6b5424;line-height:1.5}
+.alerta-desconto .check{align-items:flex-start;gap:10px;font-weight:600;color:#5a4517;font-size:13px;
+  line-height:1.45;cursor:pointer}
+.alerta-desconto .check input{margin-top:1px}
+.alerta-desconto .registro{margin:9px 0 0;font-size:11.5px;font-style:italic;color:#8a7a52}
+.alerta-fora{background:#eef3ff;border:1px solid #b9cbf5;border-left:5px solid var(--navy2);
+  border-radius:9px;padding:11px 14px;margin-bottom:11px;font-size:12.8px;color:#2c3c6b;line-height:1.5}
+.divisao{background:#f3f5fa;border-radius:9px;padding:12px 14px;margin:12px 0 16px}
+.divisao .rotulo{font-size:11px;font-weight:800;color:var(--txt2);letter-spacing:.6px;
+  text-transform:uppercase;margin-bottom:8px}
+.divisao .itens{display:flex;gap:12px;flex-wrap:wrap}
+.divisao .itens>div{flex:1 1 200px;display:flex;flex-direction:column;gap:4px}
+.divisao .itens span{font-size:12px;font-weight:700;color:var(--txt2)}
+.selo.fora{background:#eef3ff;color:#2c3c6b}
+.selo.desconto{background:#fff4d6;color:#8a6100}
+
 /* ===================== MODAL ===================== */
 .modal{display:none;position:fixed;inset:0;background:rgba(14,23,51,.6);z-index:60;padding:20px;overflow:auto}
 .modal.aberto{display:block}
@@ -322,8 +343,11 @@ table.pr-cartao tr:nth-child(even) td{background:#F7F8FB}
         <label>Kit do catálogo</label>
         <select id="sel-kit"></select>
       </div>
-      <div class="campo curto" style="justify-content:flex-end">
-        <button type="button" class="btn btn-s" onclick="abrirModalKit()">+ Novo kit</button>
+    </div>
+    <div id="aviso-fora-catalogo" style="display:none">
+      <div class="alerta-fora">
+        <b>Projeto fora do catálogo.</b> Preencha potência, geração, equipamentos e preço na mão.
+        Este documento fica marcado no histórico como venda fora da tabela.
       </div>
     </div>
     <div class="linha">
@@ -343,9 +367,35 @@ table.pr-cartao tr:nth-child(even) td{background:#F7F8FB}
   <div class="card">
     <h2>3 · Valores e pagamento</h2>
     <div class="linha">
-      <div class="campo"><label>Valor do kit gerador (R$)</label><input id="f-valorKit" placeholder="11.245,34"></div>
-      <div class="campo"><label>Componentes + serviços (R$)</label><input id="f-valorServicos" placeholder="8.754,66"></div>
-      <div class="campo"><label>Valor total do contrato</label><input id="f-total" readonly value="R$ 0,00"></div>
+      <div class="campo"><label>Preço de tabela (R$)</label>
+        <input id="f-preco-tabela" placeholder="0,00" inputmode="decimal"></div>
+      <div class="campo curto"><label>Desconto (%)</label>
+        <input id="f-desconto" placeholder="0" inputmode="decimal" maxlength="5"></div>
+      <div class="campo"><label>Valor do contrato</label>
+        <input id="f-total" readonly value="R$ 0,00"></div>
+    </div>
+    <p class="dica" id="f-economia"></p>
+
+    <div id="caixa-desconto-alto" style="display:none">
+      <div class="alerta-desconto">
+        <div class="titulo">⚠️ Desconto acima do limite autorizado</div>
+        <p>O desconto máximo autorizado pela empresa é de <b>10%</b>. Acima disso, é preciso
+          assumir a responsabilidade pela venda.</p>
+        <label class="check">
+          <input type="checkbox" id="f-desconto-liberado">
+          <span>Estou ciente de que o desconto máximo autorizado é de 10% e assumo a
+            responsabilidade por liberar um desconto maior neste contrato.</span>
+        </label>
+        <p class="registro">Fica registrado no histórico quem liberou e qual foi o percentual.</p>
+      </div>
+    </div>
+
+    <div class="divisao">
+      <div class="rotulo">Divisão automática do contrato</div>
+      <div class="itens">
+        <div><span>Kit e materiais (60%)</span><input id="f-valor-materiais" readonly value="R$ 0,00"></div>
+        <div><span>Componentes e serviços (40%)</span><input id="f-valor-servicos" readonly value="R$ 0,00"></div>
+      </div>
     </div>
     <label>Formas de pagamento do contrato</label>
     <table class="itens" id="tab-pg">
@@ -418,9 +468,21 @@ table.pr-cartao tr:nth-child(even) td{background:#F7F8FB}
 <!-- ==================== KITS ==================== -->
 <section class="pagina" id="pg-kits">
   <div class="card">
-    <h2>Catálogo de kits <span class="sub">preenchem o formulário com um clique</span></h2>
-    <button class="btn btn-p" onclick="abrirModalKit()">+ Novo kit</button>
-    <div id="lista-kits" style="margin-top:16px"></div>
+    <h2>Catálogo de kits <span class="sub">tabela oficial de preços · somente consulta</span></h2>
+    <div class="busca"><input id="busca-kit" placeholder="Buscar por potência…"></div>
+    <div id="lista-kits"></div>
+  </div>
+  <div class="card" id="area-admin-kits" style="display:none">
+    <h2>Administração do catálogo</h2>
+    <p class="dica" style="font-size:13px;line-height:1.6">
+      Importa a tabela de kits para o banco. O arquivo é gerado a partir da planilha oficial
+      e substitui o catálogo inteiro. Os preços ficam apenas no banco protegido —
+      nunca no endereço público do site.
+    </p>
+    <label class="btn btn-p" style="cursor:pointer;margin-top:8px">
+      ⬆ Importar catálogo (.json)
+      <input type="file" accept=".json" style="display:none" onchange="importarCatalogo(this)">
+    </label>
   </div>
 </section>
 
@@ -500,38 +562,6 @@ table.pr-cartao tr:nth-child(even) td{background:#F7F8FB}
   </div>
 </div>
 
-<!-- ==================== MODAL KIT ==================== -->
-<div class="modal" id="modal-kit">
-  <div class="caixa">
-    <h3 id="mk-titulo">Novo kit</h3>
-    <div class="linha">
-      <div class="campo largo"><label>Nome do kit *</label>
-        <input id="mk-nome" placeholder="Kit 10,46 kWp – TCL + AUXSOL"></div>
-    </div>
-    <div class="linha">
-      <div class="campo curto"><label>Potência (kWp)</label><input id="mk-potencia" placeholder="10,46"></div>
-      <div class="campo"><label>Geração média (kWh/mês)</label><input id="mk-geracao" placeholder="1.223"></div>
-    </div>
-    <p class="dica" style="margin:-4px 0 10px">O local da instalação (telhado, laje, solo) é definido em cada
-      documento, não no kit.</p>
-    <div class="linha">
-      <div class="campo"><label>Valor do kit (R$)</label><input id="mk-valorKit" placeholder="11.245,34"></div>
-      <div class="campo"><label>Componentes + serviços (R$)</label><input id="mk-valorServicos" placeholder="8.754,66"></div>
-    </div>
-    <div class="linha">
-      <div class="campo largo">
-        <label>Equipamentos — um por linha: DESCRIÇÃO | FABRICANTE | QUANTIDADE</label>
-        <textarea id="mk-equip" rows="4" placeholder="MÓDULO BIFACIAL 615W | TCL SOLAR | 17
-INVERSOR MONOFÁSICO 7.5KW | AUXSOL | 01"></textarea>
-      </div>
-    </div>
-    <div class="acoes" style="justify-content:flex-end;margin-top:18px">
-      <button class="btn btn-s" onclick="fecharModal('modal-kit')">Cancelar</button>
-      <button class="btn btn-p" onclick="salvarModalKit()">Salvar kit</button>
-    </div>
-  </div>
-</div>
-
 <!-- ==================== VISUALIZAÇÃO / IMPRESSÃO ==================== -->
 <div id="visual">
   <div class="barra-print">
@@ -577,7 +607,9 @@ const BD = {
   padrao() {
     return {
       clientes: [],
-      kits: KITS_INICIAIS.slice(),
+      // catálogo de kits: vem do banco protegido, não do código.
+      // Preços não ficam no HTML público — só quem tem login enxerga.
+      kits: [],
       documentos: [],
       contador: { proposta: 0, contrato: 0 },
       config: {
@@ -1285,31 +1317,15 @@ function fecharVisual() {
 <script>/* =========================================================================
    APLICAÇÃO – Power Clean (interface)
    ========================================================================= */
-const KITS_INICIAIS = [
-  {
-    id: 'kit-1046',
-    nome: 'Kit 10,46 kWp – TCL + AUXSOL',
-    potencia: '10,46', geracao: '1.223',
-    valorKit: 11245.34, valorServicos: 8754.66,
-    equipamentos: [
-      { desc: 'MÓDULO BIFACIAL 132 CEL. N TYPE 615W', fab: 'TCL SOLAR', qtde: '17' },
-      { desc: 'INVERSOR DE CORRENTE MONOFASICO 2MPPT 220V 7.5KW', fab: 'AUXSOL', qtde: '01' }
-    ]
-  },
-  {
-    id: 'kit-620',
-    nome: 'Kit 6,20 kWp – WEG',
-    potencia: '6,20', geracao: '725',
-    valorKit: 7200, valorServicos: 6600,
-    equipamentos: [
-      { desc: 'MÓDULO 615W BIFACIAL', fab: 'WEG', qtde: '10' },
-      { desc: 'INVERSOR SIW200G M050', fab: 'WEG', qtde: '01' }
-    ]
-  }
-];
+/* O catálogo de kits NÃO fica no código: ele mora no banco protegido e só
+   é visível para quem tem login. Assim os preços não vazam no HTML público.
+   Para atualizar, um administrador importa o arquivo .json do catálogo
+   (gerado a partir da planilha) na aba Kits com ?admin=1 no endereço. */
+const LIMITE_DESCONTO = 10;      // % máximo de desconto sem liberação
+const FATIA_MATERIAIS = 0.60;    // 60% do valor vai como kit e materiais
+const MODO_ADMIN = new URLSearchParams(location.search).has('admin');
 
 let clienteEditando = null;
-let kitEditando = null;
 let docReabrindo = null;
 
 /* =========================================================================
@@ -1408,74 +1424,82 @@ function novoDocParaCliente(id) {
 function renderKits() {
   const lista = BD.dados.kits;
   const alvo = document.getElementById('lista-kits');
+  const admin = document.getElementById('area-admin-kits');
+  if (admin) admin.style.display = MODO_ADMIN ? 'block' : 'none';
+
   if (!lista.length) {
-    alvo.innerHTML = `<div class="vazio"><span class="ic">📦</span>Nenhum kit cadastrado.</div>`;
+    alvo.innerHTML = `<div class="vazio"><span class="ic">📦</span>
+      Catálogo ainda não carregado.<br>
+      <span style="font-size:12.5px">Peça ao responsável para importar a tabela de kits.</span></div>`;
     return;
   }
+  const busca = (document.getElementById('busca-kit').value || '').toLowerCase();
+  const filtrados = lista.filter(k => !busca ||
+    (k.nome || '').toLowerCase().includes(busca) ||
+    String(k.potencia || '').includes(busca));
+
   alvo.innerHTML = `<table class="lista"><thead><tr>
-      <th>Kit</th><th>Potência</th><th>Equipamentos</th><th>Valor total</th><th></th>
-    </tr></thead><tbody>${lista.map(k => `<tr>
-      <td><b>${esc(k.nome)}</b>${k.geracao ? `<br><span style="color:#5a6178;font-size:12px">~${esc(k.geracao)} kWh/mês</span>` : ''}</td>
-      <td>${esc(k.potencia)} kWp</td>
+      <th>Potência</th><th>Geração</th><th>Equipamentos</th><th>Preço de tabela</th>
+      <th>Com 10% desc.</th><th></th>
+    </tr></thead><tbody>${filtrados.map(k => `<tr>
+      <td><b>${esc(k.potencia)} kWp</b><br>
+        <span style="color:#5a6178;font-size:11.5px">${esc(k.tipoInversor === 'MICRO' ? 'microinversor' : 'monofásico')}</span></td>
+      <td>${esc(k.geracao || '—')} kWh/mês</td>
       <td style="font-size:12.5px">${(k.equipamentos || []).map(e =>
         `${esc(e.qtde)}× ${esc(e.desc)}`).join('<br>')}</td>
-      <td><b>${fmtMoeda((k.valorKit || 0) + (k.valorServicos || 0))}</b><br>
-        <span style="color:#5a6178;font-size:11.5px">kit ${fmtMoeda(k.valorKit)} + serv. ${fmtMoeda(k.valorServicos)}</span></td>
+      <td><b>${fmtMoeda(precoTabelaKit(k))}</b></td>
+      <td style="color:#5a6178">${fmtMoeda(precoTabelaKit(k) * (1 - LIMITE_DESCONTO / 100))}</td>
       <td><div class="acoes-linha">
-        <button onclick="usarKit('${k.id}')">⚡ Usar</button>
-        <button onclick="abrirModalKit('${k.id}')">✏️ Editar</button>
-        <button class="perigo" onclick="excluirKit('${k.id}')">Excluir</button>
-      </div></td></tr>`).join('')}</tbody></table>`;
+        <button onclick="usarKit('${k.id}')">⚡ Usar neste documento</button>
+      </div></td></tr>`).join('')}</tbody></table>
+    <p class="dica">${filtrados.length} de ${lista.length} kits · preços de uso interno,
+      não aparecem em nenhum documento do cliente.</p>`;
 }
 
-function abrirModalKit(id) {
-  kitEditando = id ? BD.kit(id) : {};
-  const k = kitEditando || {};
-  document.getElementById('mk-titulo').textContent = id ? 'Editar kit' : 'Novo kit';
-  document.getElementById('mk-nome').value = k.nome || '';
-  document.getElementById('mk-potencia').value = k.potencia || '';
-  document.getElementById('mk-geracao').value = k.geracao || '';
-  document.getElementById('mk-valorKit').value = k.valorKit ? fmtNum(k.valorKit) : '';
-  document.getElementById('mk-valorServicos').value = k.valorServicos ? fmtNum(k.valorServicos) : '';
-  document.getElementById('mk-equip').value = (k.equipamentos || [])
-    .map(e => `${e.desc} | ${e.fab || ''} | ${e.qtde || '1'}`).join('\n');
-  document.getElementById('modal-kit').classList.add('aberto');
-  setTimeout(() => document.getElementById('mk-nome').focus(), 80);
-}
-
-function salvarModalKit() {
-  const k = Object.assign({}, kitEditando || {});
-  k.nome = document.getElementById('mk-nome').value.trim();
-  k.potencia = document.getElementById('mk-potencia').value.trim();
-  k.geracao = document.getElementById('mk-geracao').value.trim();
-  k.valorKit = parseValor(document.getElementById('mk-valorKit').value);
-  k.valorServicos = parseValor(document.getElementById('mk-valorServicos').value);
-  k.equipamentos = document.getElementById('mk-equip').value.split('\n')
-    .map(l => l.trim()).filter(Boolean)
-    .map(l => {
-      const p = l.split('|').map(x => x.trim());
-      return { desc: p[0] || '', fab: p[1] || '', qtde: p[2] || '1' };
-    });
-  if (!k.nome) { toast('Dê um nome ao kit.'); return; }
-  BD.salvarKit(k);
-  fecharModal('modal-kit');
-  preencherSelectKits();
-  renderKits();
-  toast('✅ Kit salvo.');
-}
-
-function excluirKit(id) {
-  if (!confirm('Excluir este kit do catálogo?')) return;
-  BD.excluirKit(id);
-  renderKits();
-  preencherSelectKits();
-  toast('Kit excluído.');
+/* aceita o formato novo (valorTabela) e o antigo (valorKit + valorServicos) */
+function precoTabelaKit(k) {
+  if (!k) return 0;
+  return k.valorTabela != null ? Number(k.valorTabela)
+                               : (Number(k.valorKit || 0) + Number(k.valorServicos || 0));
 }
 
 function usarKit(id) {
   mostrarAba('novo');
   document.getElementById('sel-kit').value = id;
   aplicarKit();
+}
+
+/* ---------- importação do catálogo (somente responsável) ---------- */
+function importarCatalogo(input) {
+  const arq = input.files[0];
+  if (!arq) return;
+  const leitor = new FileReader();
+  leitor.onload = () => {
+    try {
+      const pacote = JSON.parse(leitor.result);
+      const kits = Array.isArray(pacote) ? pacote : pacote.kits;
+      if (!Array.isArray(kits) || !kits.length) throw new Error('Arquivo sem lista de kits.');
+      kits.forEach((k, i) => {
+        if (!k.id || !k.potencia || precoTabelaKit(k) <= 0) {
+          throw new Error(`Kit ${i + 1} sem id, potência ou preço válido.`);
+        }
+      });
+      if (!confirm(`Substituir o catálogo por ${kits.length} kits?
+
+` +
+                   `O catálogo atual tem ${BD.dados.kits.length}.`)) { input.value = ''; return; }
+      BD.dados.kits = kits;
+      BD.salvar('kits');
+      preencherSelectKits();
+      renderKits();
+      atualizarIndicadores();
+      toast(`✅ Catálogo atualizado: ${kits.length} kits.`, 3600);
+    } catch (e) {
+      alert('Não foi possível importar: ' + e.message);
+    }
+    input.value = '';
+  };
+  leitor.readAsText(arq);
 }
 
 /* =========================================================================
@@ -1495,7 +1519,8 @@ function preencherSelectKits() {
   const sel = document.getElementById('sel-kit');
   const atual = sel.value;
   sel.innerHTML = '<option value="">— escolher do catálogo —</option>' +
-    BD.dados.kits.map(k => `<option value="${k.id}">${esc(k.nome)}</option>`).join('');
+    BD.dados.kits.map(k => `<option value="${k.id}">${esc(k.nome)} — ${fmtMoeda(precoTabelaKit(k))}</option>`).join('') +
+    '<option value="__fora__">➕ Fora do catálogo (projeto especial)</option>';
   if (atual) sel.value = atual;
 }
 
@@ -1512,18 +1537,42 @@ function aoTrocarCliente() {
 }
 
 function aplicarKit() {
-  const k = BD.kit(document.getElementById('sel-kit').value);
+  const id = document.getElementById('sel-kit').value;
+  const fora = id === '__fora__';
+  marcarForaCatalogo(fora);
+  if (fora) {
+    toast('Projeto fora do catálogo: preencha os dados e o preço na mão.', 4200);
+    return;
+  }
+  const k = BD.kit(id);
   if (!k) return;
   document.getElementById('f-potencia').value = k.potencia || '';
   document.getElementById('f-geracao').value = k.geracao || '';
-  document.getElementById('f-valorKit').value = k.valorKit ? fmtNum(k.valorKit) : '';
-  document.getElementById('f-valorServicos').value = k.valorServicos ? fmtNum(k.valorServicos) : '';
+  document.getElementById('f-preco-tabela').value = fmtNum(precoTabelaKit(k));
   const tb = document.querySelector('#tab-eq tbody');
   tb.innerHTML = '';
   (k.equipamentos || []).forEach(e => addEquip(e));
   if (!tb.children.length) addEquip();
   atualizarTotal();
-  toast('⚡ Kit aplicado: ' + k.nome);
+  toast('⚡ Kit aplicado: ' + k.potencia + ' kWp');
+}
+
+/* projeto fora da tabela: libera os campos que normalmente vêm do catálogo */
+function marcarForaCatalogo(fora) {
+  ['f-potencia', 'f-geracao', 'f-preco-tabela'].forEach(id => {
+    const el = document.getElementById(id);
+    el.readOnly = !fora && !!document.getElementById('sel-kit').value;
+  });
+  const aviso = document.getElementById('aviso-fora-catalogo');
+  if (aviso) aviso.style.display = fora ? 'block' : 'none';
+  if (fora) {
+    document.getElementById('f-preco-tabela').value = '';
+    document.getElementById('f-potencia').value = '';
+    document.getElementById('f-geracao').value = '';
+    document.querySelector('#tab-eq tbody').innerHTML = '';
+    addEquip();
+    atualizarTotal();
+  }
 }
 
 /* =========================================================================
@@ -1564,16 +1613,59 @@ function ligarLinhaPagamento(tr) {
   tr.querySelector('.pg-parc').addEventListener('input', () => recalcularLinha(tr, 'parc'));
 }
 
+/* ===================== VALORES =====================
+   preço de tabela -> desconto (limite 10%) -> valor do contrato
+   valor do contrato -> 60% kit e materiais / 40% componentes e serviços   */
+function precoTabela() {
+  return parseValor(document.getElementById('f-preco-tabela').value);
+}
+
+function descontoPercent() {
+  const v = parseFloat(String(document.getElementById('f-desconto').value).replace(',', '.'));
+  if (isNaN(v) || v < 0) return 0;
+  return Math.min(v, 100);
+}
+
+function descontoLiberado() {
+  const el = document.getElementById('f-desconto-liberado');
+  return !!(el && el.checked);
+}
+
 function totalContrato() {
-  return parseValor(document.getElementById('f-valorKit').value) +
-         parseValor(document.getElementById('f-valorServicos').value);
+  const base = precoTabela();
+  return Math.round(base * (1 - descontoPercent() / 100) * 100) / 100;
+}
+
+/* a soma das duas partes fecha exatamente com o total (sem sobra de centavo) */
+function divisaoContrato() {
+  const total = totalContrato();
+  const materiais = Math.round(total * FATIA_MATERIAIS * 100) / 100;
+  return { total: total, materiais: materiais, servicos: Math.round((total - materiais) * 100) / 100 };
 }
 
 function atualizarTotal() {
-  const t = totalContrato();
-  document.getElementById('f-total').value = fmtMoeda(t);
+  const d = divisaoContrato();
+  const desc = descontoPercent();
+  const base = precoTabela();
+
+  document.getElementById('f-total').value = fmtMoeda(d.total);
+  document.getElementById('f-valor-materiais').value = fmtMoeda(d.materiais);
+  document.getElementById('f-valor-servicos').value = fmtMoeda(d.servicos);
+
+  const economia = document.getElementById('f-economia');
+  economia.textContent = desc > 0 && base > 0
+    ? `Desconto de ${fmtMoeda(base - d.total)} sobre a tabela (${String(desc).replace('.', ',')}%).`
+    : '';
+
+  /* acima do limite: exige liberação assinada por quem está gerando */
+  const caixa = document.getElementById('caixa-desconto-alto');
+  const acima = desc > LIMITE_DESCONTO;
+  caixa.style.display = acima ? 'block' : 'none';
+  if (!acima) document.getElementById('f-desconto-liberado').checked = false;
+  document.getElementById('f-desconto').classList.toggle('acima-limite', acima);
+
   const linhas = linhasPagamento();
-  if (linhas.length === 1 && t > 0 && !parseValor(linhas[0].querySelector('.pg-valor').value)) {
+  if (linhas.length === 1 && d.total > 0 && !parseValor(linhas[0].querySelector('.pg-valor').value)) {
     linhas[0].querySelector('.pg-perc').value = '100';
     recalcularLinha(linhas[0], 'perc');
   }
@@ -1646,11 +1738,9 @@ function completarDiferenca() {
    ========================================================================= */
 function coletarDados() {
   const cliente = BD.cliente(document.getElementById('sel-cliente').value);
-  const kitId = document.getElementById('sel-kit').value;
   return {
     clienteId: cliente ? cliente.id : null,
     cliente: cliente || {},
-    kitId: kitId || null,
     data: document.getElementById('f-data').value || hojeISO(),
     validade: document.getElementById('f-validade').value || '15',
     consultor: document.getElementById('f-consultor').value.trim(),
@@ -1670,8 +1760,16 @@ function coletarDados() {
       fab: tr.querySelector('.eq-fab').value.trim(),
       qtde: tr.querySelector('.eq-qtde').value.trim()
     })).filter(e => e.desc),
-    valorKit: parseValor(document.getElementById('f-valorKit').value),
-    valorServicos: parseValor(document.getElementById('f-valorServicos').value),
+    kitId: document.getElementById('sel-kit').value || null,
+    foraCatalogo: document.getElementById('sel-kit').value === '__fora__',
+    precoTabela: precoTabela(),
+    descontoPct: descontoPercent(),
+    descontoLiberado: descontoPercent() > LIMITE_DESCONTO,
+    liberadoPor: descontoPercent() > LIMITE_DESCONTO
+      ? ((Nuvem && Nuvem.usuario && Nuvem.usuario.email) || document.getElementById('f-consultor').value.trim() || '—')
+      : null,
+    valorKit: divisaoContrato().materiais,
+    valorServicos: divisaoContrato().servicos,
     valorTotal: totalContrato(),
     pagamentos: linhasPagamento().map(tr => ({
       forma: tr.querySelector('.pg-forma').value.trim(),
@@ -1697,7 +1795,17 @@ function validar(tipo) {
     return null;
   }
   if (!d.valorTotal) {
-    toast('Informe os valores do kit e dos serviços.', 3500);
+    toast('Escolha um kit ou informe o preço do projeto.', 3500);
+    document.getElementById('f-preco-tabela').focus();
+    return null;
+  }
+  if (d.descontoPct > LIMITE_DESCONTO && !descontoLiberado()) {
+    document.getElementById('caixa-desconto-alto').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    alert(`O desconto de ${String(d.descontoPct).replace('.', ',')}% passa do limite de ` +
+          `${LIMITE_DESCONTO}% autorizado.
+
+Para seguir, marque a caixa de liberação ` +
+          `assumindo a responsabilidade — ou reduza o desconto.`);
     return null;
   }
   if (tipo === 'contrato') {
@@ -1739,6 +1847,8 @@ function registrar(d) {
   const doc = BD.salvarDocumento({
     id: existente, tipo: d.tipo, numero: d.numero, clienteId: d.clienteId,
     clienteNome: d.cliente.nome, valor: d.valorTotal, data: d.data,
+    descontoPct: d.descontoPct, descontoLiberado: d.descontoLiberado,
+    liberadoPor: d.liberadoPor, foraCatalogo: d.foraCatalogo,
     status: d.tipo === 'contrato' ? 'contrato' : 'proposta', dados: d
   });
   docReabrindo = doc;
@@ -1765,7 +1875,11 @@ function renderHistorico() {
         <br><b>${esc(d.numero)}</b></td>
       <td>${esc(d.clienteNome || '—')}</td>
       <td>${esc(dataBR(d.data))}</td>
-      <td><b>${fmtMoeda(d.valor)}</b></td>
+      <td><b>${fmtMoeda(d.valor)}</b>
+        ${d.descontoPct ? `<br><span class="selo desconto" title="${d.descontoLiberado
+            ? 'Liberado por ' + esc(d.liberadoPor || '—') : 'Dentro do limite'}">${
+            String(d.descontoPct).replace('.', ',')}% desc.${d.descontoLiberado ? ' ⚠' : ''}</span>` : ''}
+        ${d.foraCatalogo ? '<br><span class="selo fora">fora do catálogo</span>' : ''}</td>
       <td><div class="acoes-linha">
         <button onclick="reabrirDoc('${d.id}')">👁 Abrir</button>
         ${d.tipo === 'proposta' ? `<button onclick="propostaVirouContrato('${d.id}')">✅ Fechou! Gerar contrato</button>` : ''}
@@ -1830,8 +1944,11 @@ function carregarNoFormulario(d) {
   document.getElementById('f-potencia').value = d.potencia || '';
   document.getElementById('f-geracao').value = d.geracao || '';
   document.getElementById('f-estrutura').value = d.estrutura || 'Telhado Cerâmico';
-  document.getElementById('f-valorKit').value = d.valorKit ? fmtNum(d.valorKit) : '';
-  document.getElementById('f-valorServicos').value = d.valorServicos ? fmtNum(d.valorServicos) : '';
+  document.getElementById('f-preco-tabela').value =
+    d.precoTabela ? fmtNum(d.precoTabela) : (d.valorTotal ? fmtNum(d.valorTotal) : '');
+  document.getElementById('f-desconto').value = d.descontoPct || '';
+  document.getElementById('f-desconto-liberado').checked = !!d.descontoLiberado;
+  marcarForaCatalogo(!!d.foraCatalogo);
   document.getElementById('f-forn-nome').value = (d.fornecedor || {}).nome || '';
   document.getElementById('f-forn-cnpj').value = (d.fornecedor || {}).cnpj || '';
   document.getElementById('f-forn-end').value = (d.fornecedor || {}).endereco || '';
@@ -1855,8 +1972,10 @@ function limparFormulario() {
   document.getElementById('sel-cliente').value = '';
   document.getElementById('sel-kit').value = '';
   document.getElementById('f-data').value = hojeISO();
-  ['f-potencia', 'f-geracao', 'f-valorKit', 'f-valorServicos', 'endereco-instalacao'].forEach(id =>
+  ['f-potencia', 'f-geracao', 'f-preco-tabela', 'f-desconto', 'endereco-instalacao'].forEach(id =>
     document.getElementById(id).value = '');
+  document.getElementById('f-desconto-liberado').checked = false;
+  marcarForaCatalogo(false);
   document.querySelector('#tab-eq tbody').innerHTML = '';
   addEquip();
   document.querySelector('#tab-pg tbody').innerHTML = '';
@@ -1948,15 +2067,16 @@ function iniciar() {
   atualizarIndicadores();
 
   /* valores → recalcula tudo */
-  ['f-valorKit', 'f-valorServicos'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', atualizarTotal);
-    el.addEventListener('blur', () => {
-      const v = parseValor(el.value);
-      if (v > 0) el.value = fmtNum(v);
-      atualizarTotal();
-    });
+  const elPreco = document.getElementById('f-preco-tabela');
+  elPreco.addEventListener('input', atualizarTotal);
+  elPreco.addEventListener('blur', () => {
+    const v = parseValor(elPreco.value);
+    if (v > 0) elPreco.value = fmtNum(v);
+    atualizarTotal();
   });
+  document.getElementById('f-desconto').addEventListener('input', atualizarTotal);
+  document.getElementById('f-desconto-liberado').addEventListener('change', atualizarSoma);
+  document.getElementById('busca-kit').addEventListener('input', renderKits);
 
   /* consultor fica guardado para os próximos documentos */
   document.getElementById('f-consultor').addEventListener('change', e => {
