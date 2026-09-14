@@ -1698,12 +1698,58 @@ function atualizarTotal() {
   if (!acima) document.getElementById('f-desconto-liberado').checked = false;
   document.getElementById('f-desconto').classList.toggle('acima-limite', acima);
 
-  const linhas = linhasPagamento();
-  if (linhas.length === 1 && d.total > 0 && !parseValor(linhas[0].querySelector('.pg-valor').value)) {
-    linhas[0].querySelector('.pg-perc').value = '100';
-    recalcularLinha(linhas[0], 'perc');
-  }
+  sincronizarPagamentos(d.total);
   atualizarSoma();
+}
+
+/* Quando o valor do contrato muda (kit, preço ou desconto), as formas de
+   pagamento precisam acompanhar: cada linha mantém a sua PORCENTAGEM e tem o
+   valor recalculado. Sem isso a soma fica presa no valor antigo e a emissão
+   trava. */
+let ultimoTotalSincronizado = null;
+
+function sincronizarPagamentos(total) {
+  const linhas = linhasPagamento();
+  if (!linhas.length) return;
+
+  /* linha única ainda vazia: assume o contrato inteiro */
+  if (linhas.length === 1 && total > 0 && !parseValor(linhas[0].querySelector('.pg-valor').value)) {
+    linhas[0].querySelector('.pg-perc').value = '100';
+  }
+
+  const comPercentual = linhas.filter(tr => {
+    if (!tr.querySelector('.pg-forma').value.trim()) return false;
+    const p = parseFloat(String(tr.querySelector('.pg-perc').value).replace('%', '').replace(',', '.'));
+    return !isNaN(p) && p > 0;
+  });
+  if (!comPercentual.length) { ultimoTotalSincronizado = total; return; }
+
+  let antes = 0, depois = 0;
+  comPercentual.forEach(tr => {
+    antes += parseValor(tr.querySelector('.pg-valor').value);
+    const p = parseFloat(String(tr.querySelector('.pg-perc').value).replace('%', '').replace(',', '.'));
+    const valor = Math.round(total * p) / 100;
+    tr.querySelector('.pg-valor').value = fmtMoeda(valor);
+    depois += valor;
+    const n = parseInt(tr.querySelector('.pg-parc').value, 10);
+    tr.querySelector('.pg-vparc').value = (valor > 0 && n > 0) ? fmtMoeda(valor / n) : '';
+  });
+
+  /* sobra de centavo do arredondamento vai para a última linha */
+  const sobra = Math.round((total - depois) * 100) / 100;
+  if (Math.abs(sobra) >= 0.01 && Math.abs(sobra) < 1) {
+    const ultima = comPercentual[comPercentual.length - 1];
+    const corrigido = parseValor(ultima.querySelector('.pg-valor').value) + sobra;
+    ultima.querySelector('.pg-valor').value = fmtMoeda(corrigido);
+    const n = parseInt(ultima.querySelector('.pg-parc').value, 10);
+    ultima.querySelector('.pg-vparc').value = (corrigido > 0 && n > 0) ? fmtMoeda(corrigido / n) : '';
+  }
+
+  const mudou = Math.abs(antes - depois) >= 0.01;
+  if (mudou && antes > 0 && ultimoTotalSincronizado !== null && ultimoTotalSincronizado !== total) {
+    toast('Formas de pagamento atualizadas para o novo valor do contrato.', 3200);
+  }
+  ultimoTotalSincronizado = total;
 }
 
 function linhasPagamento() {
